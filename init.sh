@@ -11,12 +11,18 @@ sudo apt install -y git build-essential
 
 # Vérifie si gpio (wiringPi) est déjà installé
 if ! command -v gpio &> /dev/null; then
-  echo "📥 Installation de WiringPi depuis GitHub"
+  echo "Installation de WiringPi depuis GitHub"
   git clone https://github.com/WiringPi/WiringPi.git
   cd WiringPi
-  ./build
+  #test 1
+  ./build 
   cd ..
   rm -rf WiringPi
+
+  #tes2
+  #./build debian 
+  #mv debian-template/wiringpi-3.0-1.deb .
+  #sudo apt install ./wiringpi-3.0-1.deb
 else
   echo "WiringPi déjà installé"
 fi
