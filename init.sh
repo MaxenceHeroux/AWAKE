@@ -20,9 +20,9 @@ if ! command -v gpio &> /dev/null; then
   rm -rf WiringPi
 
   #tes2
-  #./build debian 
-  #mv debian-template/wiringpi-3.0-1.deb .
-  #sudo apt install ./wiringpi-3.0-1.deb
+  # ./build debian 
+  # mv debian-template/wiringpi-3.0-1.deb .
+  # sudo apt install ./wiringpi-3.0-1.deb
 else
   echo "WiringPi déjà installé"
 fi

@@ -3,5 +3,6 @@
 # chmod +x Test_pwm.sh
 # ./Test_pwm.sh
 
-gcc -o Test_pwm Test_pwm.cpp -lwiringPi
+rm -f Test_pwm
+gcc -o Test_pwm Test_pwm.cpp -lwiringPi -lpthread
 sudo ./Test_pwm
