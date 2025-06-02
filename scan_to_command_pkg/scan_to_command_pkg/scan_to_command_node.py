@@ -21,33 +21,54 @@ class ScanToCommandNode(Node):
         self.motor_pub = self.create_publisher(Float32, '/Moteur', 10)
         self.direction_pub = self.create_publisher(Float32, '/Direction', 10)
 
+        # Tableau pour stocker les distances sur 360°
+        self.visu = [0.0] * 360
+
     def scan_callback(self, msg: LaserScan):
-        angle_min = msg.angle_min  # radians
+        angle_min = msg.angle_min
         angle_increment = msg.angle_increment
         ranges = msg.ranges
 
-        angles_deg = [math.degrees(angle_min + i * angle_increment) for i in range(len(ranges))]
+        # Mettre à jour self.visu avec les distances valides
+        for i in range(len(ranges)):
+            angle_deg = int(math.degrees(angle_min + i * angle_increment)) % 360
+            distance = ranges[i]
+            if not math.isinf(distance) and not math.isnan(distance):
+                self.visu[angle_deg] = distance
+            else:
+                self.visu[angle_deg] = 0.0
 
-        # Filtrer les données dans l'intervalle [-90°, 90°]
-        filtered = [
-            r for r, angle in zip(ranges, angles_deg)
-            if -90.0 <= angle <= 90.0 and not math.isinf(r)
-        ]
+        # Coefficients de commande
+        alpha_direction = 0.4
+        alpha_moteur = 0.05
 
-        if not filtered:
-            self.get_logger().warn("Pas de données valides entre -90° et 90°.")
-            return
+        # Sommes pour direction (gauche et droite)
+        somme_droite_direction = sum(self.visu[:90])     # 0° à 89°
+        somme_gauche_direction = sum(self.visu[270:])    # 270° à 359°
 
-        min_dist = min(filtered)
-        self.get_logger().info(f"Min distance dans [-90°, 90°] = {min_dist:.2f} m")
+        # Somme pour la vitesse : 0° à 19° et 340° à 359° → total = 40 valeurs
+        front_view = self.visu[:10] + self.visu[350:]
+        moyenne_moteur = sum(front_view) / len(front_view) if front_view else 0.0
 
-        # Logique simple de commande
-        moteur = 0.5 if min_dist > 1.0 else 0.0
-        direction = 0.0  # pas de virage ici
+        # Logique de recul si obstacle très proche
+        if moyenne_moteur < 0.5:
+            moteur = -1.0  # Marche arrière d'urgence
+        else:
+            somme_totale = somme_droite_direction + somme_gauche_direction
+            moteur = (somme_totale / 180.0) * alpha_moteur
 
-        # Publier les commandes
-        self.motor_pub.publish(Float32(data=float(moteur)))
-        self.direction_pub.publish(Float32(data=float(direction)))
+        # Calcul direction
+        direction = (somme_droite_direction - somme_gauche_direction) * alpha_direction
+
+        # Clamp des valeurs
+        moteur = max(min(moteur, 1.0), -1.0)
+        direction = max(min(direction, 1.0), -1.0)
+
+        # Publication
+        self.motor_pub.publish(Float32(data=moteur))
+        self.direction_pub.publish(Float32(data=direction))
+
+        self.get_logger().info(f"Moteur: {moteur:.2f}, Direction: {direction:.2f}")
 
 def main(args=None):
     rclpy.init(args=args)

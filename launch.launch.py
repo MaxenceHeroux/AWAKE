@@ -32,6 +32,6 @@ def generate_launch_description():
             package='controle_pkg',
             executable='controle_node',
             name='controle_node',
-            output='screen'
+            output='screen',
         )
     ])

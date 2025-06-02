@@ -16,6 +16,7 @@ find_package(std_msgs REQUIRED)
 
 add_executable(controle_node src/controle_node.cpp)
 ament_target_dependencies(controle_node rclcpp std_msgs)
+target_link_libraries(controle_node wiringPi)
 
 
 target_include_directories(controle_node PUBLIC
