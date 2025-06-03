@@ -8,6 +8,8 @@
 #define SERVO_PIN 1       //PIN physique 12 
 #define ESC_PIN   26      //PIN physique 32
 #define PWM_RANGE 255    
+#define NEUTRE 128
+#define V_MAX 180 //MAXMAMX 220
 
 int mapValue(int x, int in_min, int in_max, int out_min, int out_max) {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
@@ -58,15 +60,19 @@ private:
     rclcpp::TimerBase::SharedPtr timer_;
 
     void moteur_callback(const std_msgs::msg::Float32::SharedPtr msg) {
-        moteur_PWM_ = static_cast<int>(msg->data); //-1 et 1
-        moteur_PWM_ = mapValue(moteur_PWM_, -1, 1, 100, 220);
-        RCLCPP_INFO(this->get_logger(), "Moteur: %d", moteur_PWM_);  
+        moteur_PWM_ = msg->data; // valeur entre -1 et 1
+        if(moteur_PWM_<=-1) { // si -1, on coupe
+            moteur_PWM_ = NEUTRE;
+        }else{ 
+            moteur_PWM_ = mapValue(static_cast<int>(moteur_PWM_*100) , 0, 100, NEUTRE, V_MAX);
+        } 
+        RCLCPP_INFO(this->get_logger(), "Moteur: %d", static_cast<int>(moteur_PWM_));
     }
 
     void direction_callback(const std_msgs::msg::Float32::SharedPtr msg) {
         servo_moteur_PWM_ = static_cast<int>(msg->data); //-1 et 1
         servo_moteur_PWM_ = mapValue(servo_moteur_PWM_, -1, 1, 30, 110);
-        RCLCPP_INFO(this->get_logger(), "Direction: %d", servo_moteur_PWM_);
+        RCLCPP_INFO(this->get_logger(), "Direction: %d", static_cast<int>(servo_moteur_PWM_));
     }
 
     void update_pwm() {
@@ -75,8 +81,8 @@ private:
         pwmWrite (ESC_PIN, moteur_PWM_);
     }
 
-    int moteur_PWM_;
-    int servo_moteur_PWM_;
+    _Float32 moteur_PWM_;
+    _Float32 servo_moteur_PWM_;
 
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr moteur_sub_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr direction_sub_;
