@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #define SERVO_PIN 1       //PIN physique 12 
-#define ESC_PIN   26      //PIN physique 32
+#define ESC_PIN   26     //PIN physique 32
 #define PWM_RANGE 255    
 
 int main(void) {

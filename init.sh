@@ -10,9 +10,9 @@ echo "Installation des outils de base"
 sudo apt install -y git build-essential
 
 #Nav2
-sudo sudo apt install ros-jazzy-navigation2 -y
-sudo sudo apt install ros-jazzy-nav2-bringup -y
-sudo chmod 777 /dev/ttyUSB0 
+# sudo sudo apt install ros-jazzy-navigation2 -y
+# sudo sudo apt install ros-jazzy-nav2-bringup -y
+# sudo chmod 777 /dev/ttyUSB0 
 
 # Vérifie si gpio (wiringPi) est déjà installé
 if ! command -v gpio &> /dev/null; then
