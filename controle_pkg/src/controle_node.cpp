@@ -5,12 +5,12 @@
 #include <softPwm.h>
 #include <stdio.h>
 
-#define SERVO_PIN 1       //PIN physique 12 
-#define ESC_PIN   26      //PIN physique 32
+#define SERVO_PIN 26       //PIN physique 12 
+#define ESC_PIN   1      //PIN physique 32
 #define PWM_RANGE 255    
 #define NEUTRE 128
-#define V_MAX 180 //MAXMAMX 220
-#define V_MIN NEUTRE+30
+#define V_MAX 190 //MAXMAMX 220
+#define V_MIN NEUTRE+40
 
 
 int mapValue(int x, int in_min, int in_max, int out_min, int out_max) {
@@ -19,7 +19,7 @@ int mapValue(int x, int in_min, int in_max, int out_min, int out_max) {
 
 class ControleNode : public rclcpp::Node {
 public:
-    ControleNode() : Node("controle_node") {
+    ControleNode() : Node("controle_node"){
         moteur_sub_ = this->create_subscription<std_msgs::msg::Float32>(
             "/Moteur", 10,
             std::bind(&ControleNode::moteur_callback, this, std::placeholders::_1)
@@ -83,7 +83,7 @@ private:
         pwmWrite (ESC_PIN, moteur_PWM_);
     }
 
-    _Float32 moteur_PWM_;
+    _Float32 moteur_PWM_ = NEUTRE;
     _Float32 servo_moteur_PWM_;
 
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr moteur_sub_;

@@ -33,21 +33,29 @@ class ScanToCommandNode(Node):
         angle_min = msg.angle_min
         angle_increment = msg.angle_increment
         ranges = msg.ranges
+        intensities = msg.intensities
 
         # Mettre à jour self.visu avec les distances valides
         for i in range(len(ranges)):
             angle_deg = int(math.degrees(angle_min + i * angle_increment)) % 360
             distance = ranges[i]
-            if not math.isinf(distance) and not math.isnan(distance):
+            intensity = intensities[i]
+            if not math.isinf(distance) and not math.isnan(distance) and (intensity> 1.0):
                 self.visu[angle_deg] = distance
             else:
-                self.visu[angle_deg] = 0.0
+                self.visu[angle_deg] = 5.0
 
         # Coefficients de commande
-        P_direction = 1.0
-        D_direction = 0.15
-        P_moteur = 6.0
-        D_moteur = 0.5
+        P_direction = 0.6
+        D_direction = 0.02
+        P_moteur = 8.0
+        D_moteur = 0.01
+
+        # backup
+        # P_direction = 1.0
+        # D_direction = 0.15
+        # P_moteur = 6.0
+        # D_moteur = 0.5
 
         # Sommes pour direction (gauche et droite)
         nb_droite = 0
@@ -67,16 +75,16 @@ class ScanToCommandNode(Node):
         moyenne_gauche = somme_gauche_direction/nb_gauche
 
         if moyenne_droite > moyenne_gauche:
-            front_view = self.visu[340:350]
+            front_view = self.visu[325:295]
         elif moyenne_gauche > moyenne_droite:
-            front_view = self.visu[10:20]
+            front_view = self.visu[35:65]
         else:
-            front_view = self.visu[:5] + self.visu[355:]
+            front_view = self.visu[:10] + self.visu[350:]
 
         moyenne_moteur = sum(front_view) / len(front_view) if front_view else 0.0
 
 
-        front_au = self.visu[:5] + self.visu[355:]
+        front_au = self.visu[:10] + self.visu[350:]
 
 
 
@@ -86,7 +94,7 @@ class ScanToCommandNode(Node):
 
         # Logique de recul si obstacle très proche
         if (sum(front_au)/len(front_au)) < 0.25:
-            self.moteur = -1.0  # Marche arrière d'urgence
+            self.moteur = -1.0
         else:
             somme_totale = somme_droite_direction + somme_gauche_direction
             self.moteur_prec = self.moteur
