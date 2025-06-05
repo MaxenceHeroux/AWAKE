@@ -46,8 +46,8 @@ class ScanToCommandNode(Node):
                 self.visu[angle_deg] = 5.0
 
         # Coefficients de commande
-        P_direction = 0.6
-        D_direction = 0.02
+        P_direction = 0.45
+        D_direction = 0.04
         P_moteur = 8.0
         D_moteur = 0.01
 
@@ -60,7 +60,7 @@ class ScanToCommandNode(Node):
         # Sommes pour direction (gauche et droite)
         nb_droite = 0
         somme_droite_direction = 0
-        for i in self.visu[25:90]:
+        for i in self.visu[25:90]: #25 110
             somme_droite_direction += i
             nb_droite += 1
 
@@ -84,7 +84,7 @@ class ScanToCommandNode(Node):
         moyenne_moteur = sum(front_view) / len(front_view) if front_view else 0.0
 
 
-        front_au = self.visu[:10] + self.visu[350:]
+        front_au = self.visu[:5] + self.visu[355:]
 
 
 
@@ -93,7 +93,7 @@ class ScanToCommandNode(Node):
 
 
         # Logique de recul si obstacle très proche
-        if (sum(front_au)/len(front_au)) < 0.25:
+        if (sum(front_au)/len(front_au)) < 0.3:
             self.moteur = -1.0
         else:
             somme_totale = somme_droite_direction + somme_gauche_direction

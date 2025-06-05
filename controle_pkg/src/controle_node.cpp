@@ -9,8 +9,8 @@
 #define ESC_PIN   1      //PIN physique 32
 #define PWM_RANGE 255    
 #define NEUTRE 128
-#define V_MAX 190 //MAXMAMX 220
-#define V_MIN NEUTRE+40
+#define V_MAX 180 //MAXMAMX 220
+#define V_MIN NEUTRE+35
 
 
 int mapValue(int x, int in_min, int in_max, int out_min, int out_max) {
