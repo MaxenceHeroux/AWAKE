@@ -6,9 +6,9 @@
 
 // Set to 1 for Anchor 1, 2 for Anchor 2
 #define ANCHOR_ID 3
-#define RESPONSE_TIMEOUT_MS 10 // Maximum time to wait for a response
+#define RESPONSE_TIMEOUT_MS 20 // Maximum time to wait for a response
 unsigned long last_ranging_time = 0;
-#define MAX_RETRIES 3
+#define MAX_RETRIES 10
 int retry_count = 0;
 
 static int rx_status;

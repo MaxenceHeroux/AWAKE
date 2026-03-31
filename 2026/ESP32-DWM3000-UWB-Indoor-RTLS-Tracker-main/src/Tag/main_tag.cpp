@@ -116,6 +116,11 @@ static int rx_status;
 static int tx_status;
 static int current_anchor_index = 0; // Index into anchors array
 static int curr_stage = 0;
+static unsigned long stage_timeout_ms = 0;
+static unsigned long last_hb1 = 0;
+static unsigned long last_hb3 = 0;
+static unsigned long last_print = 0;
+static unsigned long last_wifi = 0;
 
 // Anchor data structure
 struct AnchorData
@@ -365,9 +370,9 @@ void sendDataOverWiFi()
 
     client.print(data);
 
-    // For debugging, print the JSON to serial
-    Serial.println("Sent JSON data:");
-    Serial.println(data);
+    // For debugging (disabled to reduce spam)
+    // Serial.println("Sent JSON data:");
+    // Serial.println(data);
 }
 
 // Helper function to validate distance
@@ -1427,22 +1432,25 @@ void loop()
 {
     AnchorData *currentAnchor = getCurrentAnchor();
     int currentAnchorId = getCurrentAnchorId();
+    unsigned long now = millis();
 
     switch (curr_stage)
     {
-    case 0: // Start ranging with current target
-        // Reset timing measurements for current anchor
+    case 0:
         currentAnchor->t_roundA = 0;
         currentAnchor->t_replyA = 0;
-
         DWM3000.setDestinationID(currentAnchorId);
-        DWM3000.ds_sendFrame(1);    // Sends "Poll" (Stage 1)
-        currentAnchor->tx = DWM3000.readTXTimestamp(); // Saves T1 (Time Sent)
-        curr_stage = 1; // Move to wait for response
+        DWM3000.ds_sendFrame(1);
+        currentAnchor->tx = DWM3000.readTXTimestamp();
+        stage_timeout_ms = now + 10;
+        curr_stage = 1;
         break;
 
-    case 1: // Await first response
-        if (rx_status = DWM3000.receivedFrameSucc())    // Response Received
+    case 1:
+        // Heartbeat every 500ms
+        if (now - last_hb1 >= 500) { Serial.print("."); last_hb1 = now; }
+        
+        if (rx_status = DWM3000.receivedFrameSucc())
         {
             DWM3000.clearSystemStatus();
             if (rx_status == 1)
@@ -1467,7 +1475,7 @@ void loop()
                 }
                 else
                 {
-                    curr_stage = 2; // Move to send Final
+                    curr_stage = 2;
                 }
             }
             else
@@ -1477,20 +1485,30 @@ void loop()
                 DWM3000.clearSystemStatus();
             }
         }
+        else if (now >= stage_timeout_ms)
+        {
+            Serial.print("[TIMEOUT] Stage 2 - A");
+            Serial.println(currentAnchorId);
+            switchToNextAnchor();
+            curr_stage = 0;
+        }
         break;
 
-    case 2: // Response received. Send second ranging
-        currentAnchor->rx = DWM3000.readRXTimestamp();  // Reads T4 (Time Response Arrived)
-        DWM3000.ds_sendFrame(3);    // Sends "Final" (Stage 3)
-        currentAnchor->t_roundA = currentAnchor->rx - currentAnchor->tx;    // Calculate Tag's Round Trip: (Time Response Arrived - Time Poll Sent)
-        currentAnchor->tx = DWM3000.readTXTimestamp();  // Reads T5 (Time Final Sent)
-        currentAnchor->t_replyA = currentAnchor->tx - currentAnchor->rx;    // Calculate Tag's Reply Time: (Time Final Sent - Time Response Arrived)
-
-        curr_stage = 3; // Move to wait for Report
+    case 2:
+        currentAnchor->rx = DWM3000.readRXTimestamp();
+        DWM3000.ds_sendFrame(3);
+        currentAnchor->t_roundA = currentAnchor->rx - currentAnchor->tx;
+        currentAnchor->tx = DWM3000.readTXTimestamp();
+        currentAnchor->t_replyA = currentAnchor->tx - currentAnchor->rx;
+        stage_timeout_ms = now + 10;
+        curr_stage = 3;
         break;
 
-    case 3: // Await second response
-        if (rx_status = DWM3000.receivedFrameSucc())    // Report Received
+    case 3:
+        // Heartbeat every 500ms
+        if (now - last_hb3 >= 500) { Serial.print("."); last_hb3 = now; }
+        
+        if (rx_status = DWM3000.receivedFrameSucc())
         {
             DWM3000.clearSystemStatus();
             if (rx_status == 1)
@@ -1504,7 +1522,7 @@ void loop()
                 else
                 {
                     currentAnchor->clock_offset = DWM3000.getRawClockOffset();
-                    curr_stage = 4; // Move to calculation
+                    curr_stage = 4;
                 }
             }
             else
@@ -1514,36 +1532,49 @@ void loop()
                 DWM3000.clearSystemStatus();
             }
         }
+        else if (now >= stage_timeout_ms)
+        {
+            Serial.print("[TIMEOUT] Report - A");
+            Serial.println(currentAnchorId);
+            switchToNextAnchor();
+            curr_stage = 0;
+        }
         break;
 
-    case 4: // Response received. Calculating results
+    case 4:
     {
         int ranging_time = DWM3000.ds_processRTInfo(
-            currentAnchor->t_roundA,    // Calculated locally in Phase 3
-            currentAnchor->t_replyA,    // Calculated locally in Phase 3
-            DWM3000.read(0x12, 0x04),   // Read from Report Packet (Bytes 4-7)
-            DWM3000.read(0x12, 0x08),   // Read from Report Packet (Bytes 8-11)
+            currentAnchor->t_roundA,
+            currentAnchor->t_replyA,
+            DWM3000.read(0x12, 0x04),
+            DWM3000.read(0x12, 0x08),
             currentAnchor->clock_offset);
 
         currentAnchor->distance = DWM3000.convertToCM(ranging_time);
         currentAnchor->signal_strength = DWM3000.getSignalStrength();
         currentAnchor->fp_signal_strength = DWM3000.getFirstPathSignalStrength();
         updateFilteredDistance(*currentAnchor);
-    }
 
-        // Print current distances
-        printAllDistances();
-
-        // Send data over WiFi if all anchors have valid data
-        if (allAnchorsHaveValidData())
+        if (now - last_print >= 1000)
         {
-            sendDataOverWiFi();
+            Serial.println();
+            printAllDistances();
+            last_print = now;
         }
 
-        // Switch to next anchor
+        if (allAnchorsHaveValidData())
+        {
+            if (now - last_wifi >= 1000)
+            {
+                sendDataOverWiFi();
+                last_wifi = now;
+            }
+        }
+
         switchToNextAnchor();
         curr_stage = 0;
         break;
+    }
 
     default:
         Serial.print("Entered stage (");
